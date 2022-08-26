@@ -29,7 +29,19 @@ public class HabrCareerParse {
                 Element dateElement = row.select(".vacancy-card__date").first().child(0);
                 String dateVacancy = dateElement.attr("datetime");
                 System.out.printf("%s %s %s%n", vacancyName, link, new HabrCareerDateTimeParser().parse(dateVacancy));
+                try {
+                    System.out.println(retrieveDescription(link));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             });
         }
+    }
+
+    private static String retrieveDescription(String link) throws IOException {
+        Connection connection = Jsoup.connect(String.format(link));
+        Document document = connection.get();
+        Elements rows = document.select(".collapsible-description__content");
+        return rows.get(0).child(0).text();
     }
 }
