@@ -22,31 +22,31 @@ public class HabrCareerParse implements Parse {
         this.dateTimeParser = dateTimeParser;
     }
 
-    private static String retrieveDescription(String link) throws IOException {
-        String desc = null;
+    private static String retrieveDescription(String link) {
+        String desc;
         try {
             Connection connection = Jsoup.connect(String.format(link));
             Document document = connection.get();
             Elements rows = document.select(".collapsible-description__content");
             desc = rows.get(0).child(0).text();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Error collect description!");
         }
         return desc;
     }
 
     @Override
-    public List<Post> list(String link) throws IOException {
+    public List<Post> list(String link) {
         if (!link.endsWith("?page=")) {
             throw new IllegalArgumentException(String.format("Invalid link %s!", link));
         }
         List<Post> posts = new ArrayList<>();
-        for (int i = 1; i <= PAGE; i++) {
-            Connection connection = Jsoup.connect(String.format("%s%s", link, i));
-            Document document = connection.get();
-            Elements rows = document.select(".vacancy-card__inner");
-            rows.forEach(row -> {
-                try {
+        try {
+            for (int i = 1; i <= PAGE; i++) {
+                Connection connection = Jsoup.connect(String.format("%s%s", link, i));
+                Document document = connection.get();
+                Elements rows = document.select(".vacancy-card__inner");
+                rows.forEach(row -> {
                     Element titleElement = row.select(".vacancy-card__title").first();
                     Element linkElement = titleElement.child(0);
                     String vacancyName = titleElement.text();
@@ -54,10 +54,10 @@ public class HabrCareerParse implements Parse {
                     Element dateElement = row.select(".vacancy-card__date").first().child(0);
                     String dateVacancy = dateElement.attr("datetime");
                     posts.add(new Post(vacancyName, href, retrieveDescription(href), dateTimeParser.parse(dateVacancy)));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
+                });
+            }
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Error parse data");
         }
         return posts;
     }
