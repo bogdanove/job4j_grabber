@@ -29,11 +29,11 @@ public class PsqlStore implements Store, AutoCloseable {
 
     @Override
     public void save(Post post) {
-        try (PreparedStatement ps = cn.prepareStatement("insert into post(name, text, link, created) values (?, ?, ?, ?)")) {
+        try (PreparedStatement ps = cn.prepareStatement("insert into post(name, text, link, created) values (?, ?, ?, ?) on conflict (link) do nothing")) {
             ps.setString(1, post.getTitle());
             ps.setString(2, post.getDescription());
             ps.setString(3, post.getLink());
-            ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            ps.setTimestamp(4, Timestamp.valueOf(post.getCreated()));
             ps.execute();
         } catch (Exception e) {
             e.printStackTrace();
@@ -92,12 +92,12 @@ public class PsqlStore implements Store, AutoCloseable {
         Properties prop = new Properties();
         try (InputStream in = AlertRabbit.class.getClassLoader().getResourceAsStream("rabbit.properties")) {
             prop.load(in);
-            PsqlStore store = new PsqlStore(prop);
-            store.save(new Post("vacancy name", "vacancy link", "vacancy description", LocalDateTime.now()));
-            store.save(new Post("vacancy name2", "vacancy link2", "vacancy description2", LocalDateTime.now()));
-            System.out.println(store.findById(2));
-            System.out.println(store.getAll());
-            store.close();
+            try (PsqlStore store = new PsqlStore(prop)) {
+                store.save(new Post("vacancy name", "vacancy link", "vacancy description", LocalDateTime.now()));
+                store.save(new Post("vacancy name2", "vacancy link2", "vacancy description2", LocalDateTime.now()));
+                System.out.println(store.findById(2));
+                System.out.println(store.getAll());
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
