@@ -18,6 +18,8 @@ public class HabrCareerParse implements Parse {
 
     private static final int PAGE = 5;
 
+    private static final String PAGE_LINK = "/vacancies/java_developer?page=";
+
     public HabrCareerParse(DateTimeParser dateTimeParser) {
         this.dateTimeParser = dateTimeParser;
     }
@@ -37,13 +39,10 @@ public class HabrCareerParse implements Parse {
 
     @Override
     public List<Post> list(String link) {
-        if (!link.endsWith("?page=")) {
-            throw new IllegalArgumentException(String.format("Invalid link %s!", link));
-        }
         List<Post> posts = new ArrayList<>();
         try {
             for (int i = 1; i <= PAGE; i++) {
-                Connection connection = Jsoup.connect(String.format("%s%s", link, i));
+                Connection connection = Jsoup.connect(String.format("%s%s%s", link, PAGE_LINK, i));
                 Document document = connection.get();
                 Elements rows = document.select(".vacancy-card__inner");
                 rows.forEach(row -> {
