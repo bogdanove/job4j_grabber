@@ -19,7 +19,11 @@ import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
 import static org.quartz.TriggerBuilder.newTrigger;
 
 public class Grabber implements Grab {
-    private static final Properties CFG = new Properties();
+    private final Properties cfg = new Properties();
+
+    public Store store() {
+        return new PsqlStore(cfg);
+    }
 
     public Scheduler scheduler() throws SchedulerException {
         Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
@@ -29,7 +33,7 @@ public class Grabber implements Grab {
 
     public void cfg() throws IOException {
         try (InputStream in = Grabber.class.getClassLoader().getResourceAsStream("rabbit.properties")) {
-            CFG.load(in);
+            cfg.load(in);
         }
     }
 
@@ -42,7 +46,7 @@ public class Grabber implements Grab {
                 .usingJobData(data)
                 .build();
         SimpleScheduleBuilder times = simpleSchedule()
-                .withIntervalInSeconds(Integer.parseInt(CFG.getProperty("time")))
+                .withIntervalInSeconds(Integer.parseInt(cfg.getProperty("time")))
                 .repeatForever();
         Trigger trigger = newTrigger()
                 .startNow()
@@ -58,14 +62,14 @@ public class Grabber implements Grab {
             JobDataMap map = context.getJobDetail().getJobDataMap();
             Store store = (Store) map.get("store");
             Parse parse = (Parse) map.get("parse");
-            var result = parse.list(CFG.getProperty("link"));
-            result.forEach(store::save);
+            Grabber gr = new Grabber();
+            parse.list(gr.cfg.getProperty("link")).forEach(store::save);
         }
     }
 
     public void web(Store store) {
         new Thread(() -> {
-            try (ServerSocket server = new ServerSocket(Integer.parseInt(CFG.getProperty("port")))) {
+            try (ServerSocket server = new ServerSocket(Integer.parseInt(cfg.getProperty("port")))) {
                 while (!server.isClosed()) {
                     Socket socket = server.accept();
                     try (OutputStream out = socket.getOutputStream()) {
@@ -89,8 +93,7 @@ public class Grabber implements Grab {
         Grabber grab = new Grabber();
         grab.cfg();
         Scheduler scheduler = grab.scheduler();
-        Store store = new PsqlStore(CFG);
-        grab.init(new HabrCareerParse(new HabrCareerDateTimeParser()), store, scheduler);
-        grab.web(store);
+        grab.init(new HabrCareerParse(new HabrCareerDateTimeParser()), grab.store(), scheduler);
+        grab.web(grab.store());
     }
 }
